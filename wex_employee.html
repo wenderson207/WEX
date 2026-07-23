@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WEX — Meu Ponto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10242E;
+    --amber:#F2A93B;
+    --amber-dim: rgba(242,169,59,0.14);
+    --verde:#2FA678;
+    --verde-dim: rgba(47,166,120,0.12);
+    --coral:#E15241;
+    --coral-dim: rgba(225,82,65,0.12);
+    --nevoa:#EEF2F3;
+    --card:#FFFFFF;
+    --grafite:#6B7A82;
+    --grafite-dark:#445059;
+    --line: rgba(16,36,46,0.08);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Manrope', sans-serif;
+    background: var(--nevoa);
+    color: var(--ink);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  .app{ width:100%; max-width: 480px; padding: 22px 18px 60px; }
+
+  /* Header */
+  .header{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+  .avatar{
+    width:48px; height:48px; border-radius:50%;
+    background: var(--ink); color:var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Sora'; font-weight:700; font-size:16px;
+  }
+  .header .greet{ font-size:13px; color:var(--grafite); }
+  .header .nome{ font-family:'Sora'; font-weight:700; font-size:17px; }
+  .header .brand{ margin-left:auto; font-family:'Sora'; font-weight:700; color:var(--amber); font-size:14px; }
+
+  /* Banco de horas card */
+  .banco-card{
+    background: linear-gradient(135deg, var(--ink), #17323D);
+    color: var(--nevoa);
+    border-radius:22px;
+    padding: 22px 22px 20px;
+    margin-bottom: 18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .banco-card .label{ font-size:12.5px; color: rgba(238,242,243,0.6); font-weight:600; margin-bottom:6px;}
+  .banco-card .saldo{
+    font-family:'IBM Plex Mono'; font-size:38px; font-weight:600;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  .banco-card .saldo.positivo{ color: var(--verde); }
+  .banco-card .saldo.negativo{ color: var(--coral); }
+  .banco-card .saldo small{ font-family:'Manrope'; font-size:13px; color: rgba(238,242,243,0.55); font-weight:600; }
+  .banco-card .mes{ margin-top:14px; display:flex; gap:18px; }
+  .banco-card .mes div span{ display:block; }
+  .banco-card .mes .v{ font-family:'IBM Plex Mono'; font-size:15px; }
+  .banco-card .mes .k{ font-size:11.5px; color: rgba(238,242,243,0.5); margin-top:2px; }
+
+  /* Section title */
+  .section-title{
+    display:flex; justify-content:space-between; align-items:center;
+    margin: 22px 0 10px;
+  }
+  .section-title h2{ font-family:'Sora'; font-size:15.5px; }
+  .link-btn{
+    background:none; border:none; font-size:13px; font-weight:700; color:var(--amber2, #C9821E); cursor:pointer;
+  }
+
+  /* Today card */
+  .today-card{
+    background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px 20px;
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;
+  }
+  .today-card .status{ font-size:12.5px; color:var(--grafite); margin-bottom:4px; }
+  .today-card .time{ font-family:'IBM Plex Mono'; font-size:22px; }
+  .punch-dots{ display:flex; gap:8px; }
+  .punch-dot{
+    width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; font-family:'IBM Plex Mono';
+    background: var(--verde-dim); color: var(--verde);
+  }
+  .punch-dot.pendente{ background: rgba(16,36,46,0.05); color: var(--grafite); }
+
+  /* History list */
+  .day-card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding: 14px 18px; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .day-card .date{ width:56px; }
+  .day-card .date .dow{ font-size:11px; color:var(--grafite); text-transform:uppercase; }
+  .day-card .date .dnum{ font-family:'Sora'; font-weight:700; font-size:17px; }
+  .day-card .times{ flex:1; padding: 0 14px; }
+  .day-card .times .row{ font-family:'IBM Plex Mono'; font-size:12.5px; color:var(--grafite-dark); }
+  .day-card .diff{ font-family:'IBM Plex Mono'; font-size:13.5px; font-weight:600; text-align:right; min-width:56px; }
+  .diff.positivo{ color: var(--verde); }
+  .diff.negativo{ color: var(--coral); }
+  .diff.neutro{ color: var(--grafite); }
+
+  .fab{
+    position: fixed; bottom: 26px; left:50%; transform:translateX(-50%);
+    width: min(444px, 92vw);
+    background: var(--amber); color: var(--ink);
+    font-family:'Manrope'; font-weight:700; font-size:14.5px;
+    border:none; border-radius:16px; padding:15px 0;
+    box-shadow: 0 14px 30px rgba(242,169,59,0.35);
+    cursor:pointer;
+  }
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(16,36,46,0.45);
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.15s ease; z-index:20;
+  }
+  .modal-overlay.open{ opacity:1; pointer-events:all; }
+  .modal{
+    background:#fff; border-radius:22px 22px 0 0; width:100%; max-width:480px;
+    padding:26px 22px 30px;
+  }
+  .modal h2{ font-family:'Sora'; font-size:18px; margin-bottom:16px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; font-weight:700; color:var(--grafite-dark); margin-bottom:6px; }
+  .field input, .field select, .field textarea{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
+    font-family:'Manrope'; font-size:14px; background: var(--nevoa);
+  }
+  .field textarea{ resize:none; height:70px; }
+  .modal-actions{ display:flex; gap:10px; margin-top:18px; }
+  .btn{ font-family:'Manrope'; font-weight:700; font-size:14px; padding:12px 0; border-radius:12px; border:none; cursor:pointer; flex:1; }
+  .btn-primary{ background:var(--amber); color:var(--ink); }
+  .btn-ghost{ background:transparent; color:var(--grafite-dark); border:1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="avatar">WD</div>
+    <div>
+      <div class="greet">Boa tarde,</div>
+      <div class="nome">Wenderson</div>
+    </div>
+    <div class="brand">WEX</div>
+  </div>
+
+  <!-- Banco de horas -->
+  <div class="banco-card">
+    <div class="label">Saldo do banco de horas</div>
+    <div class="saldo positivo">+04:35 <small>este mês</small></div>
+    <div class="mes">
+      <div><span class="v">168h20</span><span class="k">Trabalhadas</span></div>
+      <div><span class="v">164h00</span><span class="k">Previstas</span></div>
+      <div><span class="v">2</span><span class="k">Ajustes pendentes</span></div>
+    </div>
+  </div>
+
+  <!-- Hoje -->
+  <div class="today-card">
+    <div>
+      <div class="status">Hoje · quinta-feira</div>
+      <div class="time">08:03</div>
+    </div>
+    <div class="punch-dots">
+      <div class="punch-dot">ENT</div>
+      <div class="punch-dot">SAI-I</div>
+      <div class="punch-dot pendente">VOLTA</div>
+      <div class="punch-dot pendente">SAÍDA</div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>Histórico recente</h2>
+    <button class="link-btn">Ver tudo</button>
+  </div>
+
+  <div id="historyList"></div>
+
+</div>
+
+<button class="fab" onclick="openModal()">+ Solicitar ajuste de ponto</button>
+
+<!-- Modal de ajuste -->
+<div class="modal-overlay" id="modalAjuste">
+  <div class="modal">
+    <h2>Solicitar ajuste de ponto</h2>
+    <div class="field"><label>Data</label><input type="date" id="ajData"></div>
+    <div class="field"><label>Tipo de batida</label>
+      <select id="ajTipo">
+        <option>Entrada</option><option>Saída para intervalo</option>
+        <option>Volta do intervalo</option><option>Saída</option>
+      </select>
+    </div>
+    <div class="field"><label>Horário correto</label><input type="time" id="ajHora"></div>
+    <div class="field"><label>Motivo</label><textarea id="ajMotivo" placeholder="Ex: esqueci de bater o ponto na saída para o almoço"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="enviarAjuste()">Enviar solicitação</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const historico = [
+    { dow:'Qua', dnum:22, entrada:'07:59', saidaInt:'12:01', voltaInt:'13:00', saida:'17:04', diff:'+00:04' },
+    { dow:'Ter', dnum:21, entrada:'08:12', saidaInt:'12:00', voltaInt:'13:05', saida:'17:00', diff:'-00:17' },
+    { dow:'Seg', dnum:20, entrada:'07:57', saidaInt:'12:00', voltaInt:'13:00', saida:'17:03', diff:'+00:06' },
+    { dow:'Sex', dnum:17, entrada:'08:00', saidaInt:'12:02', voltaInt:'13:00', saida:'17:00', diff:'00:00' },
+    { dow:'Qui', dnum:16, entrada:'08:05', saidaInt:'12:00', voltaInt:'13:00', saida:'17:41', diff:'+00:36' },
+  ];
+
+  function diffClass(diff){
+    if(diff.startsWith('+')) return 'positivo';
+    if(diff.startsWith('-')) return 'negativo';
+    return 'neutro';
+  }
+
+  const list = document.getElementById('historyList');
+  historico.forEach(d=>{
+    list.innerHTML += `
+      <div class="day-card">
+        <div class="date"><div class="dow">${d.dow}</div><div class="dnum">${d.dnum}</div></div>
+        <div class="times">
+          <div class="row">${d.entrada} · ${d.saidaInt} → ${d.voltaInt} · ${d.saida}</div>
+        </div>
+        <div class="diff ${diffClass(d.diff)}">${d.diff}</div>
+      </div>`;
+  });
+
+  function openModal(){ document.getElementById('modalAjuste').classList.add('open'); }
+  function closeModal(){ document.getElementById('modalAjuste').classList.remove('open'); }
+  function enviarAjuste(){
+    const motivo = document.getElementById('ajMotivo').value.trim();
+    if(!motivo){ document.getElementById('ajMotivo').focus(); return; }
+    closeModal();
+    document.getElementById('ajMotivo').value='';
+    alert('Solicitação enviada para aprovação da gestão.');
+  }
+</script>
+</body>
+</html>
