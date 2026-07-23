@@ -10,6 +10,7 @@
   :root{
     --ink:#10242E; --ink-2:#182F3A;
     --amber:#F2A93B; --amber-dim: rgba(242,169,59,0.14);
+    --roxo:#8B7FD6; --roxo-dim: rgba(139,127,214,0.14);
     --coral:#E15241; --coral-dim: rgba(225,82,65,0.14);
     --nevoa:#EEF2F3; --grafite:#8CA0A9;
   }
@@ -24,7 +25,16 @@
   }
   .brand{ font-family:'Sora'; font-weight:700; font-size:26px; color:var(--amber); margin-bottom:6px; }
   .brand span{ color:var(--nevoa); }
-  .tagline{ color:var(--grafite); font-size:13.5px; margin-bottom:36px; }
+  .tagline{ color:var(--grafite); font-size:13.5px; margin-bottom:28px; }
+
+  .tabs{ display:flex; gap:8px; margin-bottom:18px; width:100%; max-width:360px; }
+  .tab{
+    flex:1; text-align:center; padding:10px 0; border-radius:10px;
+    font-size:13px; font-weight:700; cursor:pointer; color:var(--grafite);
+    background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+  }
+  .tab.active{ background: var(--amber-dim); color: var(--amber); border-color: transparent; }
+  .tab.active.roxo{ background: var(--roxo-dim); color: var(--roxo); }
 
   .login-card{
     background: rgba(255,255,255,0.03);
@@ -46,6 +56,7 @@
     background: var(--amber); color: var(--ink); font-family:'Manrope'; font-weight:700; font-size:14.5px;
     cursor:pointer; margin-top:6px;
   }
+  .btn-entrar.roxo{ background: var(--roxo); color:#fff; }
   .btn-entrar:hover{ filter:brightness(1.06); }
   .btn-entrar:disabled{ opacity:0.6; cursor:default; }
 
@@ -56,6 +67,9 @@
   }
   .erro.show{ display:block; }
 
+  .painel{ display:none; }
+  .painel.active{ display:block; }
+
   .foot{ margin-top:22px; font-family:'IBM Plex Mono'; font-size:11.5px; color: rgba(238,242,243,0.3); }
 </style>
 </head>
@@ -64,11 +78,25 @@
   <div class="brand">WEX <span>· Controle de Ponto</span></div>
   <div class="tagline">Acesso restrito — entre com sua conta</div>
 
-  <div class="login-card">
-    <div class="erro" id="erroBox">E-mail ou senha inválidos.</div>
-    <div class="field"><label>E-mail</label><input id="email" type="email" placeholder="voce@empresa.com"></div>
-    <div class="field"><label>Senha</label><input id="senha" type="password" placeholder="••••••••"></div>
-    <button class="btn-entrar" id="btnEntrar" onclick="fazerLogin()">Entrar</button>
+  <div class="tabs">
+    <div class="tab active" id="tabEmpresa" onclick="mudarAba('empresa')">Sou uma empresa</div>
+    <div class="tab" id="tabSuper" onclick="mudarAba('super')">Super Admin</div>
+  </div>
+
+  <!-- LOGIN EMPRESA (CNPJ/CPF) -->
+  <div class="login-card painel active" id="painelEmpresa">
+    <div class="erro" id="erroEmpresa">CNPJ/CPF ou senha inválidos.</div>
+    <div class="field"><label>CNPJ ou CPF</label><input id="empDoc" inputmode="numeric" placeholder="Somente números"></div>
+    <div class="field"><label>Senha</label><input id="empSenha" type="password" placeholder="••••••••"></div>
+    <button class="btn-entrar" id="btnEmpresa" onclick="loginEmpresa()">Entrar</button>
+  </div>
+
+  <!-- LOGIN SUPER ADMIN (e-mail) -->
+  <div class="login-card painel" id="painelSuper">
+    <div class="erro" id="erroSuper">E-mail ou senha inválidos.</div>
+    <div class="field"><label>E-mail</label><input id="supEmail" type="email" placeholder="voce@wex.com"></div>
+    <div class="field"><label>Senha</label><input id="supSenha" type="password" placeholder="••••••••"></div>
+    <button class="btn-entrar roxo" id="btnSuper" onclick="loginSuper()">Entrar</button>
   </div>
 
   <div class="foot">WEX v0.1 · sessões são pessoais, não compartilhe seu acesso</div>
@@ -92,36 +120,63 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  const ROTAS = {
-    super_admin: 'wex-superadmin.html',
-    admin: 'wex-admin.html',
-    funcionario: 'wex-employee.html'
+  function docParaEmail(valor){
+    const digitos = valor.replace(/\D/g, '');
+    return `doc${digitos}@wex.login`;
+  }
+
+  window.mudarAba = function(qual){
+    document.getElementById('tabEmpresa').classList.toggle('active', qual==='empresa');
+    document.getElementById('tabSuper').classList.toggle('active', qual==='super');
+    document.getElementById('tabSuper').classList.toggle('roxo', qual==='super');
+    document.getElementById('painelEmpresa').classList.toggle('active', qual==='empresa');
+    document.getElementById('painelSuper').classList.toggle('active', qual==='super');
   };
 
-  window.fazerLogin = async function(){
-    const email = document.getElementById('email').value.trim();
-    const senha = document.getElementById('senha').value;
-    const erroBox = document.getElementById('erroBox');
-    const btn = document.getElementById('btnEntrar');
+  window.loginEmpresa = async function(){
+    const docValor = document.getElementById('empDoc').value.trim();
+    const senha = document.getElementById('empSenha').value;
+    const erroBox = document.getElementById('erroEmpresa');
+    const btn = document.getElementById('btnEmpresa');
+    erroBox.classList.remove('show');
+    btn.disabled = true; btn.textContent = 'Entrando…';
+
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      const cred = await signInWithEmailAndPassword(auth, docParaEmail(docValor), senha);
+      const perfilSnap = await getDoc(doc(db, 'usuarios', cred.user.uid));
+      if(!perfilSnap.exists() || perfilSnap.data().role !== 'admin'){
+        throw new Error('sem-perfil');
+      }
+      window.location.href = 'wex-admin.html';
+    } catch(e){
+      erroBox.textContent = e.message === 'sem-perfil'
+        ? 'Essa conta não tem um perfil de empresa configurado.'
+        : 'CNPJ/CPF ou senha inválidos.';
+      erroBox.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Entrar';
+    }
+  };
+
+  window.loginSuper = async function(){
+    const email = document.getElementById('supEmail').value.trim();
+    const senha = document.getElementById('supSenha').value;
+    const erroBox = document.getElementById('erroSuper');
+    const btn = document.getElementById('btnSuper');
     erroBox.classList.remove('show');
     btn.disabled = true; btn.textContent = 'Entrando…';
 
     try {
       await setPersistence(auth, browserLocalPersistence);
       const cred = await signInWithEmailAndPassword(auth, email, senha);
-
-      const usuarioSnap = await getDoc(doc(db, 'usuarios', cred.user.uid));
-      if(!usuarioSnap.exists()){
+      const perfilSnap = await getDoc(doc(db, 'usuarios', cred.user.uid));
+      if(!perfilSnap.exists() || perfilSnap.data().role !== 'super_admin'){
         throw new Error('sem-perfil');
       }
-      const { role } = usuarioSnap.data();
-      const destino = ROTAS[role];
-      if(!destino) throw new Error('role-invalido');
-
-      window.location.href = destino;
+      window.location.href = 'wex-superadmin.html';
     } catch(e){
       erroBox.textContent = e.message === 'sem-perfil'
-        ? 'Sua conta ainda não tem um perfil configurado. Fale com o administrador.'
+        ? 'Essa conta não tem perfil de Super Admin.'
         : 'E-mail ou senha inválidos.';
       erroBox.classList.add('show');
       btn.disabled = false; btn.textContent = 'Entrar';
