@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WEX — Controle de Ponto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10242E; --ink-2:#182F3A;
+    --amber:#F2A93B; --amber-dim: rgba(242,169,59,0.14);
+    --verde:#2FA678; --coral:#E15241; --roxo:#8B7FD6;
+    --nevoa:#EEF2F3; --grafite:#8CA0A9;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    min-height:100vh;
+    background: radial-gradient(120% 140% at 50% 0%, var(--ink-2) 0%, var(--ink) 55%, #0A1A21 100%);
+    color: var(--nevoa);
+    font-family:'Manrope', sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding: 60px 24px;
+  }
+  .brand{ font-family:'Sora'; font-weight:700; font-size:28px; color:var(--amber); margin-bottom:6px; }
+  .brand span{ color:var(--nevoa); }
+  .tagline{ color:var(--grafite); font-size:14px; margin-bottom:56px; text-align:center; }
+
+  .grid{
+    display:grid; grid-template-columns: repeat(2, 1fr); gap:18px;
+    width:100%; max-width: 640px;
+  }
+  .card{
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 26px 24px;
+    text-decoration:none;
+    color: var(--nevoa);
+    display:flex; flex-direction:column; gap:10px;
+    transition: all 0.15s ease;
+  }
+  .card:hover{ background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.16); transform: translateY(-2px); }
+  .card .icon{
+    width:42px; height:42px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--amber-dim); color:var(--amber);
+  }
+  .card.roxo .icon{ background: rgba(139,127,214,0.14); color:var(--roxo); }
+  .card svg{ width:22px; height:22px; }
+  .card h2{ font-family:'Sora'; font-size:16px; }
+  .card p{ font-size:13px; color:var(--grafite); line-height:1.4; }
+
+  .foot{ margin-top:50px; font-family:'IBM Plex Mono'; font-size:12px; color: rgba(238,242,243,0.35); }
+</style>
+</head>
+<body>
+
+  <div class="brand">WEX <span>· Controle de Ponto</span></div>
+  <div class="tagline">Escolha a área que deseja acessar (login automático entra em breve)</div>
+
+  <div class="grid">
+    <a class="card" href="wex-kiosk.html">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c0-4 3.4-6.4 7.5-6.4S19.5 16 19.5 20"/></svg>
+      </div>
+      <h2>Quiosque de Ponto</h2>
+      <p>Tela fixa no tablet/notebook onde o funcionário bate o ponto.</p>
+    </a>
+
+    <a class="card" href="wex-employee.html">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5"/></svg>
+      </div>
+      <h2>Meu Ponto</h2>
+      <p>Histórico pessoal, banco de horas e solicitação de ajustes.</p>
+    </a>
+
+    <a class="card" href="wex-admin.html">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V6.5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 12 6.5V20M12 20V10.5A1.5 1.5 0 0 1 13.5 9h5A1.5 1.5 0 0 1 20 10.5V20"/><path d="M4 20h16"/></svg>
+      </div>
+      <h2>Gestão</h2>
+      <p>Funcionários, turnos e escalas da empresa.</p>
+    </a>
+
+    <a class="card roxo" href="wex-superadmin.html">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="6" width="17" height="13" rx="2"/><path d="M3.5 10h17M7 15h4"/></svg>
+      </div>
+      <h2>Super Admin</h2>
+      <p>Visão do proprietário sobre todas as empresas clientes.</p>
+    </a>
+  </div>
+
+  <div class="foot">WEX v0.1</div>
+
+</body>
+</html>
