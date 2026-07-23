@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WEX — Ponto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10242E;
+    --ink-2:#182F3A;
+    --amber:#F2A93B;
+    --amber-dim: rgba(242,169,59,0.18);
+    --verde:#2FA678;
+    --verde-dim: rgba(47,166,120,0.18);
+    --coral:#E15241;
+    --nevoa:#EEF2F3;
+    --grafite:#8CA0A9;
+    --grafite-dark:#445059;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background: radial-gradient(120% 140% at 50% 0%, var(--ink-2) 0%, var(--ink) 55%, #0A1A21 100%);
+    color: var(--nevoa);
+    font-family:'Manrope', sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:space-between;
+    overflow:hidden;
+    user-select:none;
+  }
+
+  /* Top bar */
+  .topbar{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding: 28px 48px;
+  }
+  .logo{
+    font-family:'Sora', sans-serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.5px;
+    color: var(--amber);
+  }
+  .logo span{ color: var(--nevoa); font-weight:600; }
+  .date{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    color: var(--grafite);
+    text-transform:capitalize;
+  }
+
+  /* Clock */
+  .clock-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    margin-top: -10px;
+  }
+  .clock{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:500;
+    font-size:88px;
+    line-height:1;
+    letter-spacing:2px;
+    font-variant-numeric: tabular-nums;
+    color: var(--nevoa);
+    text-shadow: 0 0 40px rgba(242,169,59,0.08);
+  }
+  .clock .secs{ color: var(--amber); font-size:0.5em; vertical-align: super; opacity:0.9;}
+
+  /* Scan stage */
+  .stage{
+    position:relative;
+    width: 280px;
+    height: 280px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring-track{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    border: 3px solid rgba(255,255,255,0.06);
+  }
+  .ring-progress{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    background: conic-gradient(var(--amber) 0deg, transparent 0deg);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+    transition: background 0.15s linear;
+  }
+  .ring-progress.success{ background: conic-gradient(var(--verde) 0deg, var(--verde) 360deg) !important; }
+
+  .face-avatar{
+    width:200px; height:200px;
+    border-radius:50%;
+    background: linear-gradient(160deg, #1B3540, #0E2027);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+  }
+  .face-avatar svg{ width:96px; height:96px; opacity:0.35; }
+
+  .status-pill{
+    position:absolute;
+    bottom:-8px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-family:'Manrope';
+    font-size: 13px;
+    font-weight:700;
+    letter-spacing:0.3px;
+    background: var(--amber-dim);
+    color: var(--amber);
+    white-space:nowrap;
+    transition: all 0.25s ease;
+  }
+  .status-pill.success{ background: var(--verde-dim); color: var(--verde); }
+
+  .helper-text{
+    margin-top: 34px;
+    font-size:15px;
+    color: var(--grafite);
+    text-align:center;
+    max-width:320px;
+    line-height:1.5;
+  }
+  .helper-text b{ color: var(--nevoa); font-weight:600; }
+
+  /* Bottom actions */
+  .bottombar{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding: 30px 0 42px;
+    gap:14px;
+  }
+  .pill-btn{
+    font-family:'Manrope';
+    font-size:14px;
+    font-weight:600;
+    color: var(--grafite);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 12px 22px;
+    border-radius: 999px;
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .pill-btn:hover{ background: rgba(255,255,255,0.08); color: var(--nevoa); }
+  .pill-btn.primary{
+    background: var(--amber);
+    color: var(--ink);
+    border-color: transparent;
+  }
+  .pill-btn.primary:hover{ filter: brightness(1.08); }
+
+  /* PIN pad overlay */
+  .pin-overlay{
+    position:fixed; inset:0;
+    background: rgba(10,18,22,0.72);
+    backdrop-filter: blur(6px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+  }
+  .pin-overlay.open{ opacity:1; pointer-events:all; }
+  .pin-card{
+    background: var(--ink-2);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 24px;
+    padding: 32px 36px 28px;
+    width: 320px;
+    text-align:center;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+  }
+  .pin-card h3{ font-family:'Sora'; font-size:17px; margin-bottom: 6px;}
+  .pin-card p{ font-size:13px; color:var(--grafite); margin-bottom:20px; }
+  .pin-dots{ display:flex; justify-content:center; gap:12px; margin-bottom:24px;}
+  .pin-dot{
+    width:14px; height:14px; border-radius:50%;
+    border:1.5px solid var(--grafite-dark);
+    transition: all 0.15s ease;
+  }
+  .pin-dot.filled{ background: var(--amber); border-color: var(--amber); }
+  .keypad{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .key{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:20px;
+    color: var(--nevoa);
+    background: rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 16px 0;
+    cursor:pointer;
+    transition: background 0.1s ease;
+  }
+  .key:hover{ background: rgba(255,255,255,0.09); }
+  .key.close{ color: var(--coral); font-size:14px; font-family:'Manrope'; font-weight:600; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="logo">WEX <span>· Ponto</span></div>
+    <div class="date" id="dateLabel">quinta-feira, 23 de julho</div>
+  </div>
+
+  <div class="clock-wrap">
+    <div class="clock" id="clockLabel">08:41<span class="secs" id="secsLabel">:07</span></div>
+  </div>
+
+  <div class="stage">
+    <div class="ring-track"></div>
+    <div class="ring-progress" id="ring"></div>
+    <div class="face-avatar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#EEF2F3" stroke-width="1.3">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/>
+      </svg>
+    </div>
+    <div class="status-pill" id="statusPill">Posicione-se na câmera</div>
+  </div>
+
+  <div class="helper-text" id="helperText">
+    Olhe para a câmera para registrar sua <b>entrada</b>.
+  </div>
+
+  <div class="bottombar">
+    <button class="pill-btn" onclick="openPin()">Usar PIN</button>
+    <button class="pill-btn primary" onclick="simulateScan()">Simular reconhecimento</button>
+  </div>
+
+  <!-- PIN Overlay -->
+  <div class="pin-overlay" id="pinOverlay">
+    <div class="pin-card">
+      <h3>Digite seu PIN</h3>
+      <p>Identifique-se para registrar o ponto</p>
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <div class="keypad" id="keypad"></div>
+    </div>
+  </div>
+
+<script>
+  // Clock
+  function updateClock(){
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('clockLabel').innerHTML = `${hh}:${mm}<span class="secs" id="secsLabel">:${ss}</span>`;
+    const dateStr = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
+    document.getElementById('dateLabel').textContent = dateStr;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Simulated face-scan ring
+  let scanning = false;
+  function simulateScan(){
+    if(scanning) return;
+    scanning = true;
+    const ring = document.getElementById('ring');
+    const pill = document.getElementById('statusPill');
+    const helper = document.getElementById('helperText');
+    pill.textContent = 'Reconhecendo…';
+    pill.classList.remove('success');
+    helper.innerHTML = 'Fique parado por um instante.';
+
+    let deg = 0;
+    const interval = setInterval(() => {
+      deg += 12;
+      ring.style.background = `conic-gradient(var(--amber) ${deg}deg, transparent ${deg}deg)`;
+      if(deg >= 360){
+        clearInterval(interval);
+        ring.classList.add('success');
+        pill.classList.add('success');
+        pill.textContent = 'Entrada confirmada · 08:41';
+        helper.innerHTML = '<b>Wenderson</b>, ponto registrado com sucesso ✅';
+        setTimeout(resetStage, 2600);
+      }
+    }, 40);
+  }
+
+  function resetStage(){
+    scanning = false;
+    const ring = document.getElementById('ring');
+    const pill = document.getElementById('statusPill');
+    const helper = document.getElementById('helperText');
+    ring.classList.remove('success');
+    ring.style.background = 'conic-gradient(var(--amber) 0deg, transparent 0deg)';
+    pill.classList.remove('success');
+    pill.textContent = 'Posicione-se na câmera';
+    helper.innerHTML = 'Olhe para a câmera para registrar sua <b>entrada</b>.';
+  }
+
+  // PIN pad
+  const keypad = document.getElementById('keypad');
+  const layout = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  let pin = '';
+  layout.forEach(k=>{
+    const btn = document.createElement('div');
+    btn.className = 'key';
+    if(k === '') btn.style.visibility = 'hidden';
+    btn.textContent = k;
+    btn.onclick = () => handleKey(k);
+    keypad.appendChild(btn);
+  });
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'key close';
+  closeBtn.textContent = 'Cancelar';
+  closeBtn.style.gridColumn = '1 / span 3';
+  closeBtn.onclick = closePin;
+  keypad.appendChild(closeBtn);
+
+  function handleKey(k){
+    if(k === '⌫'){ pin = pin.slice(0,-1); }
+    else if(k !== '' && pin.length < 4){ pin += k; }
+    renderDots();
+    if(pin.length === 4){
+      setTimeout(()=>{ closePin(); simulateScan(); pin=''; renderDots(); }, 200);
+    }
+  }
+  function renderDots(){
+    const dots = document.querySelectorAll('.pin-dot');
+    dots.forEach((d,i)=> d.classList.toggle('filled', i < pin.length));
+  }
+  function openPin(){ document.getElementById('pinOverlay').classList.add('open'); }
+  function closePin(){ document.getElementById('pinOverlay').classList.remove('open'); pin=''; renderDots(); }
+</script>
+</body>
+</html>
