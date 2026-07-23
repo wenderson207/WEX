@@ -192,12 +192,15 @@
       <h2>Nova empresa cliente</h2>
       <div class="field"><label>Nome da empresa</label><input id="eNome" placeholder="Ex: Mercado Bom Preço"></div>
       <div class="field-row">
+        <div class="field"><label>CNPJ ou CPF (login da empresa)</label><input id="eDoc" placeholder="Somente números"></div>
+        <div class="field"><label>Senha de acesso</label><input id="eSenha" type="password" placeholder="Mínimo 6 caracteres"></div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>Funcionários estimados</label><input id="eFunc" type="number" value="5"></div>
         <div class="field"><label>Plano</label>
           <select id="ePlano"><option>Até 10</option><option>11 a 30</option><option>31+</option></select>
         </div>
       </div>
-      <div class="field"><label>E-mail do gestor responsável</label><input id="eEmail" placeholder="gestor@empresa.com"></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal('modalEmpresa')">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarEmpresa()">Criar empresa</button>
@@ -207,8 +210,12 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import {
+    getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, collection, onSnapshot, query
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAS43HPHKSRKf25HZ4xGME3qM9QiCdFcTs",
@@ -222,6 +229,12 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
+  // CNPJ/CPF vira um e-mail sintético só pra servir de login no Firebase Auth
+  function docParaEmail(valor){
+    const digitos = valor.replace(/\D/g, '');
+    return `doc${digitos}@wex.login`;
+  }
+
   // ---- Trava de acesso: só o super_admin entra aqui ----
   onAuthStateChanged(auth, async (user) => {
     if(!user){ window.location.href = 'index.html'; return; }
@@ -232,8 +245,8 @@
   });
 
   window.sair = () => signOut(auth).then(()=> window.location.href = 'index.html');
-</script>
-<script>
+
+  // ---- Dados (ainda mock — troque por onSnapshot em 'empresas' quando quiser listar de verdade) ----
   const planoValor = { 'Até 10': 79, '11 a 30': 179, '31+': 349 };
 
   let empresas = [
@@ -253,7 +266,7 @@
       const statusTag = e.status === 'ativa' ? 'roxo' : 'neutro';
       tbody.innerHTML += `
         <tr>
-          <td><div class="empresa-cell"><div class="empresa-logo">${iniciais(e.nome)}</div><div><div>${e.nome}</div><span class="sub">ID: emp_${e.id}</span></div></div></td>
+          <td><div class="empresa-cell"><div class="empresa-logo">${iniciais(e.nome)}</div><div><div>${e.nome}</div><span class="sub">ID: ${e.empresaId || 'emp_' + e.id}</span></div></div></td>
           <td>${e.func}</td>
           <td class="plano-badge">${e.plano}</td>
           <td><span class="tag ${pagTag}">${e.pagamento === 'em dia' ? 'Em dia' : 'Atrasado'}</span></td>
@@ -306,20 +319,54 @@
   function openModal(id){ document.getElementById(id).classList.add('open'); }
   function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 
-  function salvarEmpresa(){
+  async function salvarEmpresa(){
     const nome = document.getElementById('eNome').value.trim();
-    if(!nome) return;
-    empresas.push({
-      id: Date.now(),
-      nome,
-      func: Number(document.getElementById('eFunc').value) || 0,
-      plano: document.getElementById('ePlano').value,
-      pagamento: 'em dia',
-      status: 'ativa'
-    });
-    closeModal('modalEmpresa');
-    document.getElementById('eNome').value=''; document.getElementById('eEmail').value='';
-    renderEmpresas();
+    const docValor = document.getElementById('eDoc').value.trim();
+    const senha = document.getElementById('eSenha').value;
+    if(!nome || !docValor || senha.length < 6){
+      alert('Preencha nome, CNPJ/CPF e uma senha com pelo menos 6 caracteres.');
+      return;
+    }
+
+    const digitos = docValor.replace(/\D/g, '');
+    const empresaId = 'emp_' + digitos;
+    const emailSintetico = docParaEmail(docValor);
+
+    try {
+      // 1. Cria a conta de login da empresa (Firebase Auth)
+      const cred = await createUserWithEmailAndPassword(auth, emailSintetico, senha);
+
+      // 2. Cria o perfil de acesso (role: admin, vinculado à empresa)
+      await setDoc(doc(db, 'usuarios', cred.user.uid), {
+        role: 'admin',
+        empresaId,
+        cnpjCpf: digitos
+      });
+
+      // 3. Cria o documento da empresa
+      await setDoc(doc(db, 'empresas', empresaId), {
+        nome,
+        cnpjCpf: digitos,
+        plano: document.getElementById('ePlano').value,
+        funcionariosEstimados: Number(document.getElementById('eFunc').value) || 0,
+        status: 'ativa',
+        criadoEm: new Date().toISOString()
+      });
+
+      empresas.push({
+        id: Date.now(), empresaId, nome,
+        func: Number(document.getElementById('eFunc').value) || 0,
+        plano: document.getElementById('ePlano').value,
+        pagamento: 'em dia', status: 'ativa'
+      });
+
+      closeModal('modalEmpresa');
+      ['eNome','eDoc','eSenha'].forEach(id => document.getElementById(id).value = '');
+      renderEmpresas();
+      alert(`Empresa criada! Login da empresa: CNPJ/CPF ${docValor}, senha definida.`);
+    } catch(err){
+      alert('Erro ao criar empresa: ' + (err.message.includes('email-already-in-use') ? 'esse CNPJ/CPF já está cadastrado.' : err.message));
+    }
   }
 
   document.querySelectorAll('.nav-item').forEach(item=>{
@@ -330,6 +377,12 @@
       document.getElementById('view-' + item.dataset.view).style.display='block';
     });
   });
+
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+  window.salvarEmpresa = salvarEmpresa;
+  window.toggleSuspensao = toggleSuspensao;
+  window.verEmpresa = verEmpresa;
 
   renderEmpresas();
 </script>
