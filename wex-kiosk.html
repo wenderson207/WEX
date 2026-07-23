@@ -219,9 +219,62 @@
   }
   .key:hover{ background: rgba(255,255,255,0.09); }
   .key.close{ color: var(--coral); font-size:14px; font-family:'Manrope'; font-weight:600; }
+
+  /* Setup da empresa (login inicial do dispositivo) */
+  .setup-screen{
+    position:fixed; inset:0; z-index:30;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background: var(--ink);
+  }
+  .setup-screen.hidden{ display:none; }
+  .setup-card{
+    background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+    border-radius:22px; padding:30px 28px; width:100%; max-width:340px;
+  }
+  .setup-card h2{ font-family:'Sora'; font-size:17px; margin-bottom:4px; }
+  .setup-card p{ font-size:13px; color:var(--grafite); margin-bottom:18px; }
+  .setup-field{ margin-bottom:14px; }
+  .setup-field label{ display:block; font-size:12px; font-weight:700; color:var(--grafite); margin-bottom:6px; }
+  .setup-field input{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04); color:var(--nevoa); font-family:'Manrope'; font-size:14px;
+  }
+  .setup-erro{
+    display:none; background: rgba(225,82,65,0.14); color:var(--coral);
+    font-size:12.5px; font-weight:600; padding:9px 11px; border-radius:9px; margin-bottom:12px;
+  }
+  .setup-erro.show{ display:block; }
+  .setup-btn{
+    width:100%; padding:12px 0; border-radius:12px; border:none; background:var(--amber); color:var(--ink);
+    font-family:'Manrope'; font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;
+  }
+  .trocar-empresa{
+    position:fixed; top:14px; right:16px; font-size:11px; color: rgba(238,242,243,0.25);
+    background:none; border:none; cursor:pointer; z-index:5;
+  }
+  #kioskApp{
+    width:100%; min-height:100vh;
+    flex-direction:column; align-items:center; justify-content:space-between;
+  }
 </style>
 </head>
 <body>
+
+  <!-- Tela de configuração do quiosque: login da empresa (uma vez por dispositivo) -->
+  <div class="setup-screen" id="setupScreen">
+    <div class="setup-card">
+      <h2>Configurar este quiosque</h2>
+      <p>Entre com o CNPJ/CPF e senha da empresa para vincular este dispositivo.</p>
+      <div class="setup-erro" id="setupErro">CNPJ/CPF ou senha inválidos.</div>
+      <div class="setup-field"><label>CNPJ ou CPF</label><input id="setupDoc" inputmode="numeric" placeholder="Somente números"></div>
+      <div class="setup-field"><label>Senha</label><input id="setupSenha" type="password" placeholder="••••••••"></div>
+      <button class="setup-btn" id="setupBtn" onclick="configurarQuiosque()">Vincular quiosque</button>
+    </div>
+  </div>
+
+  <button class="trocar-empresa" onclick="trocarEmpresa()">trocar empresa</button>
+
+  <div id="kioskApp" style="display:none;">
 
   <div class="topbar">
     <div class="logo">WEX <span>· Ponto</span></div>
@@ -266,6 +319,77 @@
     </div>
   </div>
 
+  </div> <!-- fecha #kioskApp -->
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAS43HPHKSRKf25HZ4xGME3qM9QiCdFcTs",
+    authDomain: "wex-next.firebaseapp.com",
+    projectId: "wex-next",
+    storageBucket: "wex-next.firebasestorage.app",
+    messagingSenderId: "174281438850",
+    appId: "1:174281438850:web:b3747c683582564576669b"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  function docParaEmail(valor){
+    const digitos = valor.replace(/\D/g, '');
+    return `doc${digitos}@wex.login`;
+  }
+
+  let EMPRESA_ID = null;
+
+  // O dispositivo, uma vez logado, permanece logado (sessão local do navegador)
+  onAuthStateChanged(auth, async (user) => {
+    if(!user){
+      document.getElementById('setupScreen').classList.remove('hidden');
+      document.getElementById('kioskApp').style.display = 'none';
+      return;
+    }
+    const perfilSnap = await getDoc(doc(db, 'usuarios', user.uid));
+    if(!perfilSnap.exists() || perfilSnap.data().role !== 'admin'){
+      // não é uma conta de empresa válida — não deixa configurar o quiosque com ela
+      await signOut(auth);
+      return;
+    }
+    EMPRESA_ID = perfilSnap.data().empresaId;
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('kioskApp').style.display = 'flex';
+  });
+
+  window.configurarQuiosque = async function(){
+    const docValor = document.getElementById('setupDoc').value.trim();
+    const senha = document.getElementById('setupSenha').value;
+    const erroBox = document.getElementById('setupErro');
+    const btn = document.getElementById('setupBtn');
+    erroBox.classList.remove('show');
+    btn.disabled = true; btn.textContent = 'Vinculando…';
+
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      await signInWithEmailAndPassword(auth, docParaEmail(docValor), senha);
+      // onAuthStateChanged acima cuida de mostrar o quiosque
+    } catch(e){
+      erroBox.textContent = 'CNPJ/CPF ou senha inválidos.';
+      erroBox.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Vincular quiosque';
+    }
+  };
+
+  window.trocarEmpresa = async function(){
+    if(confirm('Desvincular este quiosque da empresa atual?')){
+      await signOut(auth);
+    }
+  };
+</script>
 <script>
   // Clock
   function updateClock(){
