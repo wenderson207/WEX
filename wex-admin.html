@@ -211,7 +211,7 @@
       Escalas
     </div>
 
-    <div class="sidebar-foot">WEX v0.1 · painel de gestão</div>
+    <div class="sidebar-foot">WEX v0.1 · painel de gestão<br><a href="#" onclick="sair(); return false;" style="color:inherit; text-decoration:underline;">Sair</a></div>
   </div>
 
   <div class="main">
@@ -328,8 +328,9 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
   import {
-    getFirestore, collection, doc, addDoc, setDoc, onSnapshot, query
+    getFirestore, collection, doc, addDoc, setDoc, getDoc, onSnapshot, query
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -342,12 +343,29 @@
   };
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  // ---- Trava de acesso: só entra quem é admin (ou super_admin) logado ----
+  let EMPRESA_ID = null;
+  onAuthStateChanged(auth, async (user) => {
+    if(!user){ window.location.href = 'index.html'; return; }
+    const perfilSnap = await getDoc(doc(db, 'usuarios', user.uid));
+    if(!perfilSnap.exists() || (perfilSnap.data().role !== 'admin' && perfilSnap.data().role !== 'super_admin')){
+      window.location.href = 'index.html';
+      return;
+    }
+    EMPRESA_ID = perfilSnap.data().empresaId; // super_admin também precisa ter uma empresaId associada pra visualizar aqui
+    iniciarListeners();
+  });
+
+  window.sair = () => signOut(auth).then(()=> window.location.href = 'index.html');
 
   // Por enquanto uma empresa fixa (troque quando o login multi-empresa existir)
-  const EMPRESA_ID = "wex-demo";
-  const funcionariosRef = collection(db, "empresas", EMPRESA_ID, "funcionarios");
-  const turnosRef = collection(db, "empresas", EMPRESA_ID, "turnos");
-  const escalasRef = collection(db, "empresas", EMPRESA_ID, "escalas");
+  function iniciarListeners(){
+    const funcionariosRef = collection(db, "empresas", EMPRESA_ID, "funcionarios");
+    const turnosRef = collection(db, "empresas", EMPRESA_ID, "turnos");
+    const escalasRef = collection(db, "empresas", EMPRESA_ID, "escalas");
+    window.__wexRefs = { funcionariosRef, turnosRef, escalasRef, doc, addDoc, setDoc };
 
   // ---- Estado local (populado via Firestore em tempo real) ----
   let turnos = [];
@@ -508,6 +526,7 @@
   window.salvarFuncionario = salvarFuncionario;
   window.salvarTurno = salvarTurno;
   window.setEscala = setEscala;
+  } // fecha iniciarListeners()
 </script>
 </body>
 </html>
