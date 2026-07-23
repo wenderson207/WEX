@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WEX — Super Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10242E;
+    --ink-2:#182F3A;
+    --amber:#F2A93B;
+    --amber-dim: rgba(242,169,59,0.14);
+    --verde:#2FA678;
+    --verde-dim: rgba(47,166,120,0.12);
+    --coral:#E15241;
+    --coral-dim: rgba(225,82,65,0.12);
+    --roxo:#8B7FD6;
+    --roxo-dim: rgba(139,127,214,0.14);
+    --nevoa:#EEF2F3;
+    --card:#FFFFFF;
+    --grafite:#6B7A82;
+    --grafite-dark:#445059;
+    --line: rgba(16,36,46,0.08);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Manrope', sans-serif;
+    background: var(--nevoa);
+    color: var(--ink);
+    display:flex;
+    min-height:100vh;
+  }
+
+  .sidebar{
+    width: 250px; background: var(--ink); color: var(--nevoa);
+    display:flex; flex-direction:column; padding: 28px 18px; flex-shrink:0;
+  }
+  .brand{ font-family:'Sora'; font-weight:700; font-size:20px; padding: 0 10px 6px; color:var(--amber); }
+  .brand span{ color: var(--nevoa); }
+  .owner-badge{
+    margin: 0 10px 24px;
+    display:inline-flex; align-items:center; gap:6px;
+    background: var(--roxo-dim); color: var(--roxo);
+    font-size:11px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase;
+    padding: 5px 10px; border-radius: 999px; width:fit-content;
+  }
+  .owner-badge::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--roxo); }
+
+  .nav-item{
+    display:flex; align-items:center; gap:12px; padding: 12px 14px; border-radius: 12px;
+    font-size:14px; font-weight:600; color: rgba(238,242,243,0.6); cursor:pointer; margin-bottom:4px;
+  }
+  .nav-item svg{ width:18px; height:18px; }
+  .nav-item:hover{ background: rgba(255,255,255,0.05); color: var(--nevoa); }
+  .nav-item.active{ background: var(--roxo-dim); color: var(--roxo); }
+  .sidebar-foot{ margin-top:auto; font-size:12px; color: rgba(238,242,243,0.35); padding: 0 10px; }
+
+  .main{ flex:1; padding: 34px 44px; max-width: 1220px; }
+  .page-head{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 26px; }
+  .page-head h1{ font-family:'Sora'; font-size:26px; margin-bottom:4px; }
+  .page-head p{ color: var(--grafite); font-size:14px; }
+  .btn{ font-family:'Manrope'; font-weight:700; font-size:14px; padding: 12px 20px; border-radius: 12px; border:none; cursor:pointer; }
+  .btn-primary{ background: var(--roxo); color: #fff; }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-ghost{ background:transparent; color: var(--grafite-dark); border:1px solid var(--line); }
+
+  .stats{ display:grid; grid-template-columns: repeat(4,1fr); gap:16px; margin-bottom:26px; }
+  .stat-card{ background: var(--card); border-radius:16px; padding:18px 20px; border:1px solid var(--line); }
+  .stat-card .num{ font-family:'IBM Plex Mono'; font-size:26px; font-weight:600; }
+  .stat-card .label{ font-size:12.5px; color: var(--grafite); margin-top:2px; }
+  .stat-card.roxo .num{ color: var(--roxo); }
+  .stat-card.verde .num{ color: var(--verde); }
+  .stat-card.coral .num{ color: var(--coral); }
+
+  .card{ background: var(--card); border-radius:18px; border:1px solid var(--line); overflow:hidden; }
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:0.4px;
+    color: var(--grafite); padding: 14px 20px; border-bottom:1px solid var(--line);
+    background: rgba(16,36,46,0.02);
+  }
+  tbody td{ padding: 14px 20px; font-size:14px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background: rgba(16,36,46,0.015); }
+
+  .empresa-cell{ display:flex; align-items:center; gap:12px; }
+  .empresa-logo{
+    width:38px; height:38px; border-radius:10px; background: var(--ink); color:var(--amber);
+    display:flex; align-items:center; justify-content:center; font-family:'Sora'; font-weight:700; font-size:13px;
+  }
+  .empresa-cell .sub{ display:block; font-size:12px; color:var(--grafite); font-weight:400; }
+
+  .tag{ display:inline-block; font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; }
+  .tag.verde{ background:var(--verde-dim); color:var(--verde); }
+  .tag.coral{ background:var(--coral-dim); color:var(--coral); }
+  .tag.roxo{ background:var(--roxo-dim); color:var(--roxo); }
+  .tag.neutro{ background:rgba(16,36,46,0.06); color:var(--grafite-dark); }
+
+  .plano-badge{ font-family:'IBM Plex Mono'; font-size:12.5px; color:var(--grafite-dark); }
+
+  .icon-btn{
+    background:none; border:none; cursor:pointer; color: var(--grafite);
+    font-size:13px; font-weight:600; padding:6px 10px; border-radius:8px;
+  }
+  .icon-btn:hover{ background: rgba(16,36,46,0.05); color: var(--ink); }
+  .icon-btn.danger:hover{ color: var(--coral); }
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(16,36,46,0.45);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.15s ease; z-index:20;
+  }
+  .modal-overlay.open{ opacity:1; pointer-events:all; }
+  .modal{ background:#fff; border-radius:20px; width:440px; max-width:90vw; padding:28px 30px; box-shadow:0 30px 60px rgba(0,0,0,0.2); }
+  .modal h2{ font-family:'Sora'; font-size:19px; margin-bottom:18px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; font-weight:700; color:var(--grafite-dark); margin-bottom:6px; }
+  .field input, .field select{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
+    font-family:'Manrope'; font-size:14px; background: var(--nevoa);
+  }
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+</style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="brand">WEX <span>· Owner</span></div>
+    <div class="owner-badge">Super Admin</div>
+
+    <div class="nav-item active" data-view="empresas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V6.5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 12 6.5V20M12 20V10.5A1.5 1.5 0 0 1 13.5 9h5A1.5 1.5 0 0 1 20 10.5V20"/><path d="M4 20h16M7 9h1M7 13h1M16 13h1"/></svg>
+      Empresas
+    </div>
+    <div class="nav-item" data-view="faturamento">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="6" width="17" height="13" rx="2"/><path d="M3.5 10h17M7 15h4"/></svg>
+      Faturamento
+    </div>
+
+    <div class="sidebar-foot">WEX v0.1 · visão do proprietário</div>
+  </div>
+
+  <div class="main">
+
+    <!-- EMPRESAS -->
+    <div class="view" id="view-empresas">
+      <div class="page-head">
+        <div>
+          <h1>Empresas clientes</h1>
+          <p>Todas as empresas usando o WEX hoje</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modalEmpresa')">+ Nova empresa</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card roxo"><div class="num" id="statEmpresas">0</div><div class="label">Empresas ativas</div></div>
+        <div class="stat-card"><div class="num" id="statFuncTotal">0</div><div class="label">Funcionários no total</div></div>
+        <div class="stat-card verde"><div class="num" id="statMRR">R$ 0</div><div class="label">Receita mensal estimada (MRR)</div></div>
+        <div class="stat-card coral"><div class="num" id="statInadimplentes">0</div><div class="label">Empresas inadimplentes</div></div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Empresa</th><th>Funcionários</th><th>Plano</th><th>Pagamento</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="tblEmpresas"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FATURAMENTO -->
+    <div class="view" id="view-faturamento" style="display:none;">
+      <div class="page-head">
+        <div>
+          <h1>Faturamento</h1>
+          <p>Resumo de receita por plano</p>
+        </div>
+      </div>
+      <div class="card" id="faturamentoCard" style="padding:20px 24px;"></div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: Nova Empresa -->
+  <div class="modal-overlay" id="modalEmpresa">
+    <div class="modal">
+      <h2>Nova empresa cliente</h2>
+      <div class="field"><label>Nome da empresa</label><input id="eNome" placeholder="Ex: Mercado Bom Preço"></div>
+      <div class="field-row">
+        <div class="field"><label>Funcionários estimados</label><input id="eFunc" type="number" value="5"></div>
+        <div class="field"><label>Plano</label>
+          <select id="ePlano"><option>Até 10</option><option>11 a 30</option><option>31+</option></select>
+        </div>
+      </div>
+      <div class="field"><label>E-mail do gestor responsável</label><input id="eEmail" placeholder="gestor@empresa.com"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modalEmpresa')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarEmpresa()">Criar empresa</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const planoValor = { 'Até 10': 79, '11 a 30': 179, '31+': 349 };
+
+  let empresas = [
+    { id:1, nome:'BSTYLE Eletrônicos', func:12, plano:'11 a 30', pagamento:'em dia', status:'ativa' },
+    { id:2, nome:'GW Art Studio', func:4, plano:'Até 10', pagamento:'em dia', status:'ativa' },
+    { id:3, nome:'Mercado Bom Preço', func:22, plano:'11 a 30', pagamento:'atrasado', status:'ativa' },
+    { id:4, nome:'Auto Peças Silva', func:7, plano:'Até 10', pagamento:'em dia', status:'suspensa' },
+  ];
+
+  function iniciais(nome){ return nome.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase(); }
+
+  function renderEmpresas(){
+    const tbody = document.getElementById('tblEmpresas');
+    tbody.innerHTML = '';
+    empresas.forEach(e=>{
+      const pagTag = e.pagamento === 'em dia' ? 'verde' : 'coral';
+      const statusTag = e.status === 'ativa' ? 'roxo' : 'neutro';
+      tbody.innerHTML += `
+        <tr>
+          <td><div class="empresa-cell"><div class="empresa-logo">${iniciais(e.nome)}</div><div><div>${e.nome}</div><span class="sub">ID: emp_${e.id}</span></div></div></td>
+          <td>${e.func}</td>
+          <td class="plano-badge">${e.plano}</td>
+          <td><span class="tag ${pagTag}">${e.pagamento === 'em dia' ? 'Em dia' : 'Atrasado'}</span></td>
+          <td><span class="tag ${statusTag}">${e.status === 'ativa' ? 'Ativa' : 'Suspensa'}</span></td>
+          <td>
+            <button class="icon-btn" onclick="verEmpresa(${e.id})">Ver</button>
+            <button class="icon-btn danger" onclick="toggleSuspensao(${e.id})">${e.status === 'ativa' ? 'Suspender' : 'Reativar'}</button>
+          </td>
+        </tr>`;
+    });
+
+    document.getElementById('statEmpresas').textContent = empresas.filter(e=>e.status==='ativa').length;
+    document.getElementById('statFuncTotal').textContent = empresas.reduce((s,e)=>s+e.func,0);
+    const mrr = empresas.filter(e=>e.status==='ativa').reduce((s,e)=>s+planoValor[e.plano],0);
+    document.getElementById('statMRR').textContent = 'R$ ' + mrr;
+    document.getElementById('statInadimplentes').textContent = empresas.filter(e=>e.pagamento!=='em dia').length;
+
+    renderFaturamento();
+  }
+
+  function renderFaturamento(){
+    const porPlano = {};
+    empresas.forEach(e=>{
+      if(e.status !== 'ativa') return;
+      porPlano[e.plano] = (porPlano[e.plano]||0) + 1;
+    });
+    let html = `<table style="width:100%;">
+      <thead><tr><th style="text-align:left;padding:10px 0;color:var(--grafite);font-size:12px;text-transform:uppercase;">Plano</th>
+      <th style="text-align:left;padding:10px 0;color:var(--grafite);font-size:12px;text-transform:uppercase;">Empresas</th>
+      <th style="text-align:left;padding:10px 0;color:var(--grafite);font-size:12px;text-transform:uppercase;">Receita</th></tr></thead><tbody>`;
+    Object.keys(planoValor).forEach(p=>{
+      const qtd = porPlano[p] || 0;
+      html += `<tr><td style="padding:10px 0;">${p}</td><td style="padding:10px 0;">${qtd}</td><td style="padding:10px 0;font-family:'IBM Plex Mono';">R$ ${qtd * planoValor[p]}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    document.getElementById('faturamentoCard').innerHTML = html;
+  }
+
+  function toggleSuspensao(id){
+    const e = empresas.find(e=>e.id===id);
+    e.status = e.status === 'ativa' ? 'suspensa' : 'ativa';
+    renderEmpresas();
+  }
+
+  function verEmpresa(id){
+    const e = empresas.find(e=>e.id===id);
+    alert(`Abriria o painel de gestão da empresa "${e.nome}" (visão que o cliente vê).`);
+  }
+
+  function openModal(id){ document.getElementById(id).classList.add('open'); }
+  function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+  function salvarEmpresa(){
+    const nome = document.getElementById('eNome').value.trim();
+    if(!nome) return;
+    empresas.push({
+      id: Date.now(),
+      nome,
+      func: Number(document.getElementById('eFunc').value) || 0,
+      plano: document.getElementById('ePlano').value,
+      pagamento: 'em dia',
+      status: 'ativa'
+    });
+    closeModal('modalEmpresa');
+    document.getElementById('eNome').value=''; document.getElementById('eEmail').value='';
+    renderEmpresas();
+  }
+
+  document.querySelectorAll('.nav-item').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+      item.classList.add('active');
+      document.getElementById('view-' + item.dataset.view).style.display='block';
+    });
+  });
+
+  renderEmpresas();
+</script>
+</body>
+</html>
