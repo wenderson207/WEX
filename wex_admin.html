@@ -326,25 +326,34 @@
     </div>
   </div>
 
-<script>
-  // ---- Dados em memória (mock) ----
-  let turnos = [
-    { id:1, nome:'Turno Manhã', entrada:'08:00', saida:'17:00', intervalo:'01:00', tolerancia:10 },
-    { id:2, nome:'Turno Tarde', entrada:'12:00', saida:'21:00', intervalo:'01:00', tolerancia:10 },
-  ];
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc, addDoc, setDoc, onSnapshot, query
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-  let funcionarios = [
-    { id:1, nome:'Ana Ferreira', cargo:'Vendedora', unidade:'Loja Centro', turnoId:1, status:'presente', hora:'07:58' },
-    { id:2, nome:'Carlos Souza', cargo:'Técnico', unidade:'Matriz', turnoId:1, status:'atrasado', hora:'08:22' },
-    { id:3, nome:'Bia Martins', cargo:'Caixa', unidade:'Loja Shopping', turnoId:2, status:'pendente', hora:null },
-    { id:4, nome:'Diego Alves', cargo:'Estoquista', unidade:'Matriz', turnoId:2, status:'presente', hora:'11:55' },
-  ];
+  const firebaseConfig = {
+    apiKey: "AIzaSyAS43HPHKSRKf25HZ4xGME3qM9QiCdFcTs",
+    authDomain: "wex-next.firebaseapp.com",
+    projectId: "wex-next",
+    storageBucket: "wex-next.firebasestorage.app",
+    messagingSenderId: "174281438850",
+    appId: "1:174281438850:web:b3747c683582564576669b"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
+  // Por enquanto uma empresa fixa (troque quando o login multi-empresa existir)
+  const EMPRESA_ID = "wex-demo";
+  const funcionariosRef = collection(db, "empresas", EMPRESA_ID, "funcionarios");
+  const turnosRef = collection(db, "empresas", EMPRESA_ID, "turnos");
+  const escalasRef = collection(db, "empresas", EMPRESA_ID, "escalas");
+
+  // ---- Estado local (populado via Firestore em tempo real) ----
+  let turnos = [];
+  let funcionarios = [];
   const dias = ['seg','ter','qua','qui','sex','sab','dom'];
   let escalas = {}; // escalas[funcionarioId][dia] = turnoId | 'folga'
-  funcionarios.forEach(f=>{
-    escalas[f.id] = { seg:f.turnoId, ter:f.turnoId, qua:f.turnoId, qui:f.turnoId, sex:f.turnoId, sab:'folga', dom:'folga' };
-  });
 
   // ---- Navegação ----
   document.querySelectorAll('.nav-item').forEach(item=>{
@@ -423,38 +432,47 @@
     });
   }
 
-  function setEscala(funcId, dia, val){
-    escalas[funcId][dia] = val === 'folga' ? 'folga' : Number(val);
+  async function setEscala(funcId, dia, val){
+    const valor = val === 'folga' ? 'folga' : Number(val);
+    escalas[funcId] = escalas[funcId] || {};
+    escalas[funcId][dia] = valor;
+    // grava só o campo do dia alterado, sem sobrescrever os outros dias
+    await setDoc(doc(escalasRef, String(funcId)), { [dia]: valor }, { merge: true });
   }
 
   // ---- Modais ----
   function openModal(id){ document.getElementById(id).classList.add('open'); }
   function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 
-  function salvarFuncionario(){
+  async function salvarFuncionario(){
     const nome = document.getElementById('fNome').value.trim();
     if(!nome) return;
-    const novo = {
-      id: Date.now(),
+    const turnoId = document.getElementById('fTurno').value;
+    const pin = document.getElementById('fPin').value.trim();
+
+    const docRef = await addDoc(funcionariosRef, {
       nome,
       cargo: document.getElementById('fCargo').value || '—',
       unidade: document.getElementById('fUnidade').value,
-      turnoId: Number(document.getElementById('fTurno').value),
+      turnoId,
+      pin, // TODO: mover para hash antes de ir pra produção
       status: 'pendente',
       hora: null
-    };
-    funcionarios.push(novo);
-    escalas[novo.id] = { seg:novo.turnoId, ter:novo.turnoId, qua:novo.turnoId, qui:novo.turnoId, sex:novo.turnoId, sab:'folga', dom:'folga' };
+    });
+
+    // já cria a escala padrão do funcionário (segunda a sexta no turno, folga fds)
+    await setDoc(doc(escalasRef, docRef.id), {
+      seg:turnoId, ter:turnoId, qua:turnoId, qui:turnoId, sex:turnoId, sab:'folga', dom:'folga'
+    });
+
     closeModal('modalFuncionario');
     document.getElementById('fNome').value=''; document.getElementById('fCargo').value=''; document.getElementById('fPin').value='';
-    renderFuncionarios(); renderEscalas();
   }
 
-  function salvarTurno(){
+  async function salvarTurno(){
     const nome = document.getElementById('tNome').value.trim();
     if(!nome) return;
-    turnos.push({
-      id: Date.now(),
+    await addDoc(turnosRef, {
       nome,
       entrada: document.getElementById('tEntrada').value,
       saida: document.getElementById('tSaida').value,
@@ -463,13 +481,33 @@
     });
     closeModal('modalTurno');
     document.getElementById('tNome').value='';
-    renderTurnos(); renderFuncionarios();
   }
 
-  // ---- Init ----
-  renderTurnos();
-  renderFuncionarios();
-  renderEscalas();
+  // ---- Listeners em tempo real (Firestore) ----
+  onSnapshot(query(turnosRef), (snap)=>{
+    turnos = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    renderTurnos();
+    renderFuncionarios();
+    renderEscalas();
+  });
+
+  onSnapshot(query(funcionariosRef), (snap)=>{
+    funcionarios = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    renderFuncionarios();
+    renderEscalas();
+  });
+
+  onSnapshot(query(escalasRef), (snap)=>{
+    snap.docs.forEach(d=>{ escalas[d.id] = d.data(); });
+    renderEscalas();
+  });
+
+  // expõe as funções chamadas via onclick/onchange no HTML (necessário por causa do type="module")
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+  window.salvarFuncionario = salvarFuncionario;
+  window.salvarTurno = salvarTurno;
+  window.setEscala = setEscala;
 </script>
 </body>
 </html>
