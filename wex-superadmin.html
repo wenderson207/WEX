@@ -214,7 +214,7 @@
     getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, collection, onSnapshot, query
+    getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, query, getCountFromServer
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -246,43 +246,47 @@
 
   window.sair = () => signOut(auth).then(()=> window.location.href = 'index.html');
 
-  // ---- Dados (ainda mock — troque por onSnapshot em 'empresas' quando quiser listar de verdade) ----
+  // ---- Dados reais (Firestore) ----
   const planoValor = { 'Até 10': 79, '11 a 30': 179, '31+': 349 };
+  const empresasRef = collection(db, 'empresas');
+  let empresas = []; // populado pelo onSnapshot abaixo
 
-  let empresas = [
-    { id:1, nome:'BSTYLE Eletrônicos', func:12, plano:'11 a 30', pagamento:'em dia', status:'ativa' },
-    { id:2, nome:'GW Art Studio', func:4, plano:'Até 10', pagamento:'em dia', status:'ativa' },
-    { id:3, nome:'Mercado Bom Preço', func:22, plano:'11 a 30', pagamento:'atrasado', status:'ativa' },
-    { id:4, nome:'Auto Peças Silva', func:7, plano:'Até 10', pagamento:'em dia', status:'suspensa' },
-  ];
+  function iniciais(nome){ return (nome||'?').split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase(); }
 
-  function iniciais(nome){ return nome.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase(); }
-
-  function renderEmpresas(){
+  async function renderEmpresas(){
     const tbody = document.getElementById('tblEmpresas');
     tbody.innerHTML = '';
-    empresas.forEach(e=>{
-      const pagTag = e.pagamento === 'em dia' ? 'verde' : 'coral';
+
+    for(const e of empresas){
+      // conta funcionários de verdade dentro da subcoleção da empresa
+      let funcCount = 0;
+      try {
+        const snap = await getCountFromServer(collection(db, 'empresas', e.empresaId, 'funcionarios'));
+        funcCount = snap.data().count;
+      } catch(err){ /* subcoleção pode ainda não existir */ }
+      e.func = funcCount;
+
+      const pagTag = (e.pagamento || 'em dia') === 'em dia' ? 'verde' : 'coral';
       const statusTag = e.status === 'ativa' ? 'roxo' : 'neutro';
       tbody.innerHTML += `
         <tr>
-          <td><div class="empresa-cell"><div class="empresa-logo">${iniciais(e.nome)}</div><div><div>${e.nome}</div><span class="sub">ID: ${e.empresaId || 'emp_' + e.id}</span></div></div></td>
+          <td><div class="empresa-cell"><div class="empresa-logo">${iniciais(e.nome)}</div><div><div>${e.nome}</div><span class="sub">ID: ${e.empresaId}</span></div></div></td>
           <td>${e.func}</td>
-          <td class="plano-badge">${e.plano}</td>
-          <td><span class="tag ${pagTag}">${e.pagamento === 'em dia' ? 'Em dia' : 'Atrasado'}</span></td>
+          <td class="plano-badge">${e.plano || '—'}</td>
+          <td><span class="tag ${pagTag}">${(e.pagamento || 'em dia') === 'em dia' ? 'Em dia' : 'Atrasado'}</span></td>
           <td><span class="tag ${statusTag}">${e.status === 'ativa' ? 'Ativa' : 'Suspensa'}</span></td>
           <td>
-            <button class="icon-btn" onclick="verEmpresa(${e.id})">Ver</button>
-            <button class="icon-btn danger" onclick="toggleSuspensao(${e.id})">${e.status === 'ativa' ? 'Suspender' : 'Reativar'}</button>
+            <button class="icon-btn" onclick="verEmpresa('${e.empresaId}')">Ver</button>
+            <button class="icon-btn danger" onclick="toggleSuspensao('${e.empresaId}')">${e.status === 'ativa' ? 'Suspender' : 'Reativar'}</button>
           </td>
         </tr>`;
-    });
+    }
 
     document.getElementById('statEmpresas').textContent = empresas.filter(e=>e.status==='ativa').length;
-    document.getElementById('statFuncTotal').textContent = empresas.reduce((s,e)=>s+e.func,0);
-    const mrr = empresas.filter(e=>e.status==='ativa').reduce((s,e)=>s+planoValor[e.plano],0);
+    document.getElementById('statFuncTotal').textContent = empresas.reduce((s,e)=>s+(e.func||0),0);
+    const mrr = empresas.filter(e=>e.status==='ativa').reduce((s,e)=>s+(planoValor[e.plano]||0),0);
     document.getElementById('statMRR').textContent = 'R$ ' + mrr;
-    document.getElementById('statInadimplentes').textContent = empresas.filter(e=>e.pagamento!=='em dia').length;
+    document.getElementById('statInadimplentes').textContent = empresas.filter(e=>(e.pagamento||'em dia')!=='em dia').length;
 
     renderFaturamento();
   }
@@ -305,15 +309,16 @@
     document.getElementById('faturamentoCard').innerHTML = html;
   }
 
-  function toggleSuspensao(id){
-    const e = empresas.find(e=>e.id===id);
-    e.status = e.status === 'ativa' ? 'suspensa' : 'ativa';
-    renderEmpresas();
+  async function toggleSuspensao(empresaId){
+    const e = empresas.find(e=>e.empresaId===empresaId);
+    const novoStatus = e.status === 'ativa' ? 'suspensa' : 'ativa';
+    await updateDoc(doc(db, 'empresas', empresaId), { status: novoStatus });
+    // a atualização chega automaticamente pelo onSnapshot
   }
 
-  function verEmpresa(id){
-    const e = empresas.find(e=>e.id===id);
-    alert(`Abriria o painel de gestão da empresa "${e.nome}" (visão que o cliente vê).`);
+  function verEmpresa(empresaId){
+    const e = empresas.find(e=>e.empresaId===empresaId);
+    alert(`Empresa: ${e.nome}\nID: ${e.empresaId}\nPlano: ${e.plano}\nStatus: ${e.status}`);
   }
 
   function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -349,20 +354,14 @@
         cnpjCpf: digitos,
         plano: document.getElementById('ePlano').value,
         funcionariosEstimados: Number(document.getElementById('eFunc').value) || 0,
+        pagamento: 'em dia',
         status: 'ativa',
         criadoEm: new Date().toISOString()
       });
 
-      empresas.push({
-        id: Date.now(), empresaId, nome,
-        func: Number(document.getElementById('eFunc').value) || 0,
-        plano: document.getElementById('ePlano').value,
-        pagamento: 'em dia', status: 'ativa'
-      });
-
+      // a lista atualiza sozinha pelo onSnapshot — não precisa mexer no array manualmente
       closeModal('modalEmpresa');
       ['eNome','eDoc','eSenha'].forEach(id => document.getElementById(id).value = '');
-      renderEmpresas();
       alert(`Empresa criada! Login da empresa: CNPJ/CPF ${docValor}, senha definida.`);
     } catch(err){
       alert('Erro ao criar empresa: ' + (err.message.includes('email-already-in-use') ? 'esse CNPJ/CPF já está cadastrado.' : err.message));
@@ -384,7 +383,11 @@
   window.toggleSuspensao = toggleSuspensao;
   window.verEmpresa = verEmpresa;
 
-  renderEmpresas();
+  // ---- Listener em tempo real da lista de empresas ----
+  onSnapshot(query(empresasRef), (snap)=>{
+    empresas = snap.docs.map(d=>({ empresaId: d.id, ...d.data() }));
+    renderEmpresas();
+  });
 </script>
 </body>
 </html>
